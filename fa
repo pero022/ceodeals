@@ -1,0 +1,89 @@
+getElementById('fCountry').value;
+  const notes = document.getElementById('fNotes').value.trim();
+
+  if (!firstName  !lastName  !email  !phone  !street  !zip  !city) {
+    alert('⚠️ Vul alle verplichte velden in.');
+    return;
+  }
+  if (!selectedPayment) {
+    alert('⚠️ Kies een betaalmethode.');
+    return;
+  }
+
+  const subtotal = getSubtotal();
+  const shipping = getShipping(subtotal);
+  const total = subtotal + shipping;
+
+  const orderItems = cart.map(i => `${i.name} × ${i.qty} = ${formatPrice(i.price * i.qty)}`).join('\n');
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Bestelling verwerken...';
+
+  // Formspree submit
+  try {
+    const formData = new FormData();
+    formData.append('_subject', `Nieuwe bestelling ${currentOrderNum} — CertoDeals`);
+    formData.append('Ordernummer', currentOrderNum);
+    formData.append('Naam', `${firstName} ${lastName}`);
+    formData.append('Email', email);
+    formData.append('WhatsApp', phone);
+    formData.append('Adres', `${street}, ${zip} ${city}, ${country}`);
+    formData.append('Betaalmethode', selectedPayment === 'tikkie' ? 'Tikkie' : 'Bankoverschrijving');
+    formData.append('Producten', orderItems);
+    formData.append('Subtotaal', formatPrice(subtotal));
+    formData.append('Verzendkosten', shipping === 0 ? 'GRATIS' : formatPrice(shipping));
+    formData.append('Totaal', formatPrice(total));
+    formData.append('Opmerkingen', notes || '-');
+
+    if (CONFIG.formspreeId !== "JOUW_FORMSPREE_ID") {
+      await fetch(`https://formspree.io/f/${CONFIG.formspreeId}`, {
+        method: 'POST', body: formData,
+        headers: { 'Accept': 'application/json' }
+      });
+    }
+  } catch (e) {
+    console.log('Email niet verzonden:', e);
+  }
+
+  // Show confirmation
+  document.getElementById('checkoutForm').style.display = 'none';
+  const confirmScreen = document.getElementById('confirmationScreen');
+  confirmScreen.classList.add('show');
+  document.getElementById('confirmOrderNum').textContent = currentOrderNum;
+  document.getElementById('confirmEmail').textContent = email;
+
+  const paymentBox = document.getElementById('confirmPaymentBox');
+  if (selectedPayment === 'bank') {
+    paymentBox.innerHTML = `
+      <h4>🏦 Betaalinstructies — Bankoverschrijving</h4>
+      <p>
+        Maak <strong>${formatPrice(total)}</strong> over naar:<br>
+        <strong>IBAN:</strong> ${CONFIG.iban}<br>
+        <strong>Ten name van:</strong> ${CONFIG.ibanName}<br>
+        <strong>Omschrijving:</strong> ${currentOrderNum}<br><br>
+        Na ontvangst van je betaling verwerken wij je bestelling direct.
+      </p>`;
+  } else {
+    paymentBox.innerHTML = `
+      <h4>📱 Betaalinstructies — Tikkie</h4>
+      <p>
+        Je ontvangt binnen <strong>30 minuten</strong> een Tikkie-verzoek op <strong>${phone}</strong> voor het bedrag van <strong>${formatPrice(total)}</strong>.<br><br>
+        Vermeld bij vragen altijd je ordernummer: <strong>${currentOrderNum}</strong><br>
+        Of stuur een WhatsApp naar <a href="https://wa.me/${CONFIG.whatsapp.replace(/\s+/g, '')}">${CONFIG.whatsapp}</a>
+      </p>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '✅ Bestelling plaatsen';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderProducts();
+updateCartUI();
+</script>
+
+</body>
+</html>
